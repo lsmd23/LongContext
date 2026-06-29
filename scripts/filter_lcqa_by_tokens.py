@@ -67,6 +67,7 @@ def main() -> None:
     parser.add_argument("--max-tokens", type=int, default=900_000)
     parser.add_argument("--stats-output", default=None)
     parser.add_argument("--limit", type=int, default=None, help="Only scan the first N rows.")
+    parser.add_argument("--progress", action="store_true", help="Show a progress bar.")
     parser.add_argument(
         "--compute-all-lengths",
         action="store_true",
@@ -93,8 +94,17 @@ def main() -> None:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    row_iter = read_jsonl(args.input)
+    if args.progress:
+        try:
+            from tqdm import tqdm
+
+            row_iter = tqdm(row_iter, desc=f"Filtering {Path(args.input).parent.name}", unit="row")
+        except ModuleNotFoundError:
+            print("tqdm is not installed; continuing without a progress bar.", file=sys.stderr)
+
     with output_path.open("w", encoding="utf-8", newline="\n") as f:
-        for row in read_jsonl(args.input):
+        for row in row_iter:
             if args.limit is not None and total >= args.limit:
                 break
             total += 1
