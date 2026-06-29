@@ -1,0 +1,4 @@
+train_file: ${LONGCONTEXT_OUTPUT_ROOT}/sft/train.jsonl
+template: context_qa_v1
+max_seq_length: 1048576
+packing: false

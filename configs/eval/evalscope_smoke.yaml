@@ -1,0 +1,4 @@
+benchmark: null
+model: null
+data_path: null
+output_dir: ${LONGCONTEXT_OUTPUT_ROOT}/evalscope_smoke

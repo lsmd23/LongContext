@@ -1,0 +1,24 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local data and heavy artifacts
+data/
+outputs/
+checkpoints/
+wandb/
+runs/
+
+# Large dataset/model files
+*.jsonl
+*.parquet
+*.arrow
+*.safetensors
+*.pt
+*.pth
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/sftp.json

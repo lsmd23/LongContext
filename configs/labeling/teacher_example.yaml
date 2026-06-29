@@ -1,0 +1,7 @@
+teacher_model: glm-5.2
+temperature: 0.2
+max_output_tokens: 4096
+template: teacher_context_qa_v1
+retry:
+  max_attempts: 3
+  backoff_seconds: 5
