@@ -4,8 +4,17 @@
 
 本机主要负责代码编辑、小样本调试、配置和实验记录。
 
+推荐使用 conda 独立环境，避免污染 `base`。
+
 ```bash
-python -m venv .venv
+conda env create -f environment.yml
+conda activate longcontext
+```
+
+如果环境已经存在：
+
+```bash
+conda activate longcontext
 pip install -r requirements.txt
 pip install -e .
 ```

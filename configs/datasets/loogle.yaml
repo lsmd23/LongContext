@@ -1,0 +1,8 @@
+name: bigai-nlco/LooGLE
+subsets:
+  - shortdep_qa
+  - shortdep_cloze
+  - longdep_qa
+  - summarization
+split: test
+raw_dir: ${LONGCONTEXT_DATA_ROOT}/raw/loogle

@@ -1,1 +1,5 @@
-sources: []
+sources:
+  - name: bigai-nlco/LooGLE
+    registry: huggingface
+    url: https://huggingface.co/datasets/bigai-nlco/LooGLE
+    status: raw_download_ready

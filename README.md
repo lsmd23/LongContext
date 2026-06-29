@@ -37,9 +37,8 @@ src/longcontext/  # Python 包
 ## 快速开始
 
 ```bash
-python -m venv .venv
-pip install -r requirements.txt
-pip install -e .
+conda env create -f environment.yml
+conda activate longcontext
 ```
 
 复制 `.env.example` 为 `.env`，按机器修改数据目录。
