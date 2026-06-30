@@ -146,7 +146,8 @@ def build_evalscope_command(
     timeout = generation.get("timeout")
     if timeout is not None:
         generation_config["timeout"] = timeout
-    cmd.extend(["--generation-config", json.dumps(generation_config)])
+    for key, value in generation_config.items():
+        cmd.extend(["--generation-config", f"{key}={value}"])
 
     return cmd
 
