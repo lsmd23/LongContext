@@ -113,7 +113,7 @@ def choose_split(splits: list[str], requested_split: str | None) -> str:
 
 
 def iter_streaming_rows(dataset_name: str, config: str | None, split: str, limit: int):
-    kwargs = {"split": split, "streaming": True}
+    kwargs = {"split": split, "streaming": True, "trust_remote_code": False}
     if config:
         dataset = load_dataset(dataset_name, config, **kwargs)
     else:
