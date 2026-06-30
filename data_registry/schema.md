@@ -45,7 +45,12 @@ LCQA 是本项目的 normalized 中间格式。它不是直接训练格式，而
   },
   "quality": {
     "status": "raw",
-    "verified": false
+    "verified": false,
+    "needs_long_context": null,
+    "quality_score": null,
+    "evidence_spread": null,
+    "contamination_risk": null,
+    "metadata": {}
   }
 }
 ```

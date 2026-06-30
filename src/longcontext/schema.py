@@ -73,6 +73,11 @@ class Quality(BaseModel):
     annotator: str | None = None
     verified: bool = False
     notes: str | None = None
+    needs_long_context: bool | None = None
+    quality_score: float | None = None
+    evidence_spread: str | None = None
+    contamination_risk: Literal["low", "medium", "high"] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class Training(BaseModel):
