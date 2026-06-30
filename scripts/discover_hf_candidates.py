@@ -87,7 +87,7 @@ def dataset_tags_and_license(info) -> tuple[list[str], str | None]:
 
 def safe_configs(dataset_name: str, max_configs: int) -> list[str | None]:
     try:
-        configs = get_dataset_config_names(dataset_name)
+        configs = get_dataset_config_names(dataset_name, trust_remote_code=False)
     except Exception:
         return [None]
     if not configs:
@@ -97,7 +97,11 @@ def safe_configs(dataset_name: str, max_configs: int) -> list[str | None]:
 
 def safe_splits(dataset_name: str, config: str | None) -> list[str]:
     try:
-        splits = get_dataset_split_names(dataset_name, config) if config else get_dataset_split_names(dataset_name)
+        splits = (
+            get_dataset_split_names(dataset_name, config, trust_remote_code=False)
+            if config
+            else get_dataset_split_names(dataset_name, trust_remote_code=False)
+        )
     except Exception:
         return ["train"]
     return list(splits) or ["train"]
