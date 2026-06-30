@@ -62,8 +62,10 @@ class Length(BaseModel):
     tokenizer: str | None = None
     context_tokens: int | None = None
     question_tokens: int | None = None
+    input_tokens: int | None = None
     prompt_tokens: int | None = None
     answer_tokens: int | None = None
+    length_bucket: str | None = None
 
 
 class Quality(BaseModel):

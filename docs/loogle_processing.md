@@ -1,20 +1,22 @@
 # LooGLE 处理
 
-当前分两步：
+当前分三步：
 
 ```text
 raw LooGLE JSONL
   -> LCQA normalized JSONL
-  -> token filtered LCQA JSONL
+  -> tokenized and bucketed LCQA JSONL
+  -> 32K-900K filtered LCQA JSONL
 ```
 
-这里的 `Question token` 按长上下文训练范式理解为完整用户输入：
+这里的长度统计口径按长上下文训练范式理解为完整模型输入：
 
 ```text
-full_question = context + question + choices
+input_tokens = context_tokens + question_tokens
+question_text = instruction + question + choices
 ```
 
-LCQA 中仍然把 `document.context` 和 `input.question` 分开保存，方便后续转换、质检和渲染；筛选时默认使用 `full_question`。
+LCQA 中仍然把 `document.context` 和 `input.question` 分开保存，方便后续转换、质检和渲染；筛选时默认使用 `input_tokens`，并写入 `length.length_bucket`。
 
 ## 1. 统一格式
 
@@ -45,19 +47,28 @@ data/raw/loogle/<subset>/test.jsonl
 data/normalized/loogle/<subset>/test.lcqa.jsonl
 ```
 
-## 2. 按完整 Question token 筛选
+## 2. Token 统计、分桶和 32K-900K 筛选
 
 本机 smoke：
 
 ```bash
 python scripts/filter_lcqa_by_tokens.py \
   data/smoke/normalized/loogle/longdep_qa/test.lcqa.jsonl \
-  data/smoke/filtered/loogle/longdep_qa/test.full_question32k_900k.lcqa.jsonl \
+  data/smoke/filtered/loogle/longdep_qa/filtered_32k_900k.jsonl \
   --tokenizer Qwen/Qwen2.5-7B-Instruct \
-  --min-tokens 32000 \
+  --min-tokens 32768 \
   --max-tokens 900000 \
   --limit 5 \
-  --stats-output data/smoke/filtered/loogle/longdep_qa/test.full_question32k_900k.stats.json
+  --stats-output data/smoke/filtered/loogle/longdep_qa/filter_stats.json
+```
+
+该命令会在输出目录下同时生成：
+
+```text
+samples_with_tokens.jsonl
+filtered_32k_900k.jsonl
+length_bucket_stats.csv
+bucket_review_samples.md
 ```
 
 全量处理：
@@ -65,15 +76,9 @@ python scripts/filter_lcqa_by_tokens.py \
 ```bash
 python scripts/filter_lcqa_by_tokens.py \
   data/normalized/loogle/longdep_qa/test.lcqa.jsonl \
-  data/filtered/loogle/longdep_qa/test.full_question32k_900k.lcqa.jsonl \
+  data/filtered/loogle/longdep_qa/filtered_32k_900k.jsonl \
   --tokenizer Qwen/Qwen2.5-7B-Instruct \
-  --min-tokens 32000 \
+  --min-tokens 32768 \
   --max-tokens 900000 \
-  --stats-output data/filtered/loogle/longdep_qa/test.full_question32k_900k.stats.json
-```
-
-如果只想统计原始短问题文本，可显式指定：
-
-```bash
-python scripts/filter_lcqa_by_tokens.py input.lcqa.jsonl output.lcqa.jsonl --token-field question_text
+  --stats-output data/filtered/loogle/longdep_qa/filter_stats.json
 ```

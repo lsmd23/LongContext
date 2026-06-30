@@ -38,8 +38,10 @@ LCQA 是本项目的 normalized 中间格式。它不是直接训练格式，而
     "tokenizer": null,
     "context_tokens": null,
     "question_tokens": null,
+    "input_tokens": null,
     "prompt_tokens": null,
-    "answer_tokens": null
+    "answer_tokens": null,
+    "length_bucket": null
   },
   "quality": {
     "status": "raw",

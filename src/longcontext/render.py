@@ -28,7 +28,11 @@ def render_context_qa(sample: LCQASample) -> dict:
             "source_id": sample.id,
             "dataset": sample.source.dataset,
             "template": "context_qa_v1",
+            "context_tokens": sample.length.context_tokens,
+            "question_tokens": sample.length.question_tokens,
+            "input_tokens": sample.length.input_tokens,
             "prompt_tokens": sample.length.prompt_tokens,
             "answer_tokens": sample.length.answer_tokens,
+            "length_bucket": sample.length.length_bucket,
         },
     }

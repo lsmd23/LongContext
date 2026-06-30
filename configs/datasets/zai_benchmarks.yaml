@@ -1,17 +1,20 @@
 sources:
-  - name: bigai-nlco/LooGLE
-    registry: huggingface
-    url: https://huggingface.co/datasets/bigai-nlco/LooGLE
-    status: raw_download_ready
   - name: zai-org/LongBench
+    local_name: zai_longbench
     registry: huggingface
     url: https://huggingface.co/datasets/zai-org/LongBench
     status: raw_download_ready
   - name: zai-org/LongBench-v2
+    local_name: zai_longbench_v2
     registry: huggingface
     url: https://huggingface.co/datasets/zai-org/LongBench-v2
     status: raw_download_ready
   - name: xinrongzhang2022/InfiniteBench
+    local_name: infinitebench
     registry: huggingface
     url: https://huggingface.co/datasets/xinrongzhang2022/InfiniteBench
     status: raw_download_ready
+default_split: test
+raw_dir: ${LONGCONTEXT_DATA_ROOT}/raw
+normalized_dir: ${LONGCONTEXT_DATA_ROOT}/normalized
+filtered_dir: ${LONGCONTEXT_DATA_ROOT}/filtered
