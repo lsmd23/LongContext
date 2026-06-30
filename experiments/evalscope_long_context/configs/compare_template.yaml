@@ -1,0 +1,49 @@
+experiment:
+  name: "longbench_v2_compare"
+  description: "Before/after comparison template for LongBench-v2"
+  run_type: "compare"
+
+compare:
+  baseline_run_id: "TODO_BASELINE_RUN_ID"
+  trained_run_id: "TODO_TRAINED_RUN_ID"
+  output_report: "reports/compare_{baseline_run_id}_vs_{trained_run_id}.md"
+
+dimensions:
+  - model_name
+  - model_version
+  - training_data_version
+  - benchmark
+  - subset
+  - limit
+  - accuracy
+  - failed
+  - latency
+
+benchmark:
+  name: "longbench_v2"
+  subset: null
+  limit: null
+  metric: "accuracy"
+
+model:
+  name: "TODO_TRAINED_MODEL_NAME"
+  api_url_env: "MODEL_API_URL"
+  api_key_env: "MODEL_API_KEY"
+  max_context_length: null
+
+generation:
+  temperature: 0.0
+  top_p: 1.0
+  max_output_tokens: 16
+  timeout: 600
+
+runtime:
+  eval_type: "openai_api"
+  backend: "OpenAI-compatible API"
+  client_machine: "CPU dev machine"
+
+logging:
+  output_root: "experiments/evalscope_long_context/runs"
+  save_raw_outputs: true
+  save_failed_cases: true
+  save_latency: true

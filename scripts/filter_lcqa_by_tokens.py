@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from longcontext.io import read_jsonl
+from longcontext.benchmark_guard import expand_heldout_benchmarks, mark_training_eligibility
 from longcontext.length import BUCKET_ORDER, get_length_bucket, is_main_long_context_bucket
 from longcontext.schema import LCQASample
 
@@ -244,6 +245,15 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None, help="Only scan the first N rows.")
     parser.add_argument("--progress", action="store_true", help="Show a progress bar.")
     parser.add_argument(
+        "--heldout-benchmark",
+        action="append",
+        default=None,
+        help=(
+            "Benchmark source reserved for evaluation and excluded from training eligibility. "
+            "Can be repeated or comma-separated. Defaults to longbench_v2."
+        ),
+    )
+    parser.add_argument(
         "--compute-all-lengths",
         action="store_true",
         help="Deprecated no-op. All length fields are now computed to support bucketed processing.",
@@ -260,9 +270,12 @@ def main() -> None:
         ) from exc
 
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=True)
+    heldout_aliases = expand_heldout_benchmarks(args.heldout_benchmark or ["longbench_v2"])
 
     total = 0
     kept = 0
+    training_eligible = 0
+    training_ineligible = 0
     min_seen = None
     max_seen = None
     token_sum = 0
@@ -302,6 +315,7 @@ def main() -> None:
                 total += 1
                 sample = LCQASample.model_validate(row)
                 sample = update_lengths(sample, args.tokenizer, tokenizer)
+                sample = mark_training_eligibility(sample, heldout_aliases)
                 token_count = sample.length.input_tokens or 0
 
                 min_seen = token_count if min_seen is None else min(min_seen, token_count)
@@ -316,6 +330,10 @@ def main() -> None:
                     sample.quality.status = "filtered"
                     f.write(json.dumps(sample.model_dump(mode="json"), ensure_ascii=False) + "\n")
                     kept += 1
+                    if sample.quality.training_eligible:
+                        training_eligible += 1
+                    else:
+                        training_ineligible += 1
                     if sample.length.length_bucket:
                         kept_bucket_counts[sample.length.length_bucket] += 1
                     maybe_keep_review_sample(
@@ -343,6 +361,9 @@ def main() -> None:
         "total": total,
         "kept": kept,
         "dropped": total - kept,
+        "heldout_benchmark_aliases": sorted(heldout_aliases),
+        "training_eligible_kept": training_eligible,
+        "training_ineligible_kept": training_ineligible,
         "min_seen": min_seen,
         "max_seen": max_seen,
         "avg_seen": token_sum / total if total else None,

@@ -4,7 +4,7 @@
 HF/source data
   -> raw
   -> normalize to LCQA
-  -> tokenize and filter
+  -> tokenize, filter, and mark training eligibility
   -> teacher labeling
   -> quality check
   -> render SFT
@@ -33,6 +33,44 @@ python scripts/filter_all_lcqa.py --normalized-root data/normalized --filtered-r
 ```
 
 `data/discovery/hf_candidates/candidate_sources.jsonl` 记录产生候选的数据源、config、split、license、tags 和污染风险，后续可以用来决定是否扩大下载/抽样规模。
+
+## Held-out Benchmark 隔离
+
+筛选阶段默认把 `longbench_v2` 视为 held-out evaluation benchmark。若样本来源与 held-out benchmark 同源，样本不会被静默删除，而是写入以下字段：
+
+```json
+{
+  "quality": {
+    "training_eligible": false,
+    "training_exclusion_reason": "source_matches_heldout_benchmark:longbenchv2",
+    "contamination_risk": "high"
+  }
+}
+```
+
+未命中 held-out benchmark 的样本会标记为：
+
+```json
+{
+  "quality": {
+    "training_eligible": true,
+    "training_exclusion_reason": null
+  }
+}
+```
+
+如果实验 benchmark 改变，需要显式传入：
+
+```bash
+python scripts/filter_all_lcqa.py --heldout-benchmark infinitebench
+python scripts/discover_hf_candidates.py --heldout-benchmark infinitebench
+```
+
+`scripts/render_sft.py` 默认跳过 `quality.training_eligible=false` 的样本，避免把评测集同源数据误导出为训练数据。只有调试时才使用：
+
+```bash
+python scripts/render_sft.py input.lcqa.jsonl output.sft.jsonl --include-training-ineligible
+```
 
 ## 原则
 

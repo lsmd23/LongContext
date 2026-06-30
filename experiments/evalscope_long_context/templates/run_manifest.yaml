@@ -1,0 +1,55 @@
+run_id: null
+experiment:
+  name: null
+  description: null
+  run_type: null
+
+held_out_notice: |
+  LongBench-v2 is held-out evaluation data.
+  Do not use its context, question, choices, answer, rewritten samples, translated samples,
+  or teacher-labeled variants for training.
+
+benchmark:
+  name: null
+  subset: null
+  limit: null
+  metric: null
+
+model:
+  name: null
+  api_url_env: null
+  api_key_env: null
+
+git:
+  commit: null
+  branch: null
+  is_dirty: null
+
+python:
+  executable: null
+  version: null
+
+packages:
+  evalscope: null
+  openai: null
+  pyyaml: null
+
+machine:
+  hostname: null
+  platform: null
+  client_machine: null
+
+environment:
+  model_api_url_present: null
+  model_api_key_env: null
+  model_api_key_present: null
+
+command: null
+evalscope_cli_args: null
+
+timing:
+  started_at: null
+  finished_at: null
+  duration_seconds: null
+
+status: null

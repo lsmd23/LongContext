@@ -21,6 +21,15 @@ def main() -> None:
     parser.add_argument("--max-tokens", type=int, default=900_000)
     parser.add_argument("--limit", type=int, default=None, help="Only scan the first N rows per file.")
     parser.add_argument("--progress", action="store_true")
+    parser.add_argument(
+        "--heldout-benchmark",
+        action="append",
+        default=None,
+        help=(
+            "Benchmark source reserved for evaluation and excluded from training eligibility. "
+            "Can be repeated or comma-separated. Defaults to longbench_v2."
+        ),
+    )
     args = parser.parse_args()
 
     normalized_root = Path(args.normalized_root)
@@ -47,6 +56,8 @@ def main() -> None:
             "--stats-output",
             str(stats_path),
         ]
+        for benchmark in args.heldout_benchmark or ["longbench_v2"]:
+            cmd.extend(["--heldout-benchmark", benchmark])
         if args.limit is not None:
             cmd.extend(["--limit", str(args.limit)])
         if args.progress:

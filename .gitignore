@@ -23,3 +23,10 @@ runs/
 .DS_Store
 Thumbs.db
 .vscode/sftp.json
+
+# agent instructions
+instructions/
+
+# EvalScope experiment outputs
+experiments/evalscope_long_context/runs/*
+!experiments/evalscope_long_context/runs/.gitkeep

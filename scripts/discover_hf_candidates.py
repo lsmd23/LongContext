@@ -16,6 +16,7 @@ from huggingface_hub import HfApi
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from longcontext.benchmark_guard import expand_heldout_benchmarks, mark_training_eligibility
 from longcontext.discovery import decision_to_json, make_lcqa_sample, sample_preview
 
 
@@ -151,6 +152,15 @@ def main() -> None:
     parser.add_argument("--min-tokens", type=int, default=32_768)
     parser.add_argument("--max-tokens", type=int, default=900_000)
     parser.add_argument(
+        "--heldout-benchmark",
+        action="append",
+        default=None,
+        help=(
+            "Benchmark source reserved for evaluation and excluded from training eligibility. "
+            "Can be repeated or comma-separated. Defaults to longbench_v2."
+        ),
+    )
+    parser.add_argument(
         "--output-root",
         default=os.getenv("LONGCONTEXT_DATA_ROOT", "data"),
         help="Base data directory. Discovery files are written under <output-root>/discovery/hf_candidates.",
@@ -177,6 +187,7 @@ def main() -> None:
 
     api = HfApi()
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=True)
+    heldout_aliases = expand_heldout_benchmarks(args.heldout_benchmark or ["longbench_v2"])
     dataset_names = parse_csv(args.datasets) or discover_dataset_names(
         api,
         parse_csv(args.search_terms),
@@ -241,6 +252,7 @@ def main() -> None:
 
                         if not sample:
                             continue
+                        sample = mark_training_eligibility(sample, heldout_aliases)
                         write_jsonl_row(all_samples_f, sample.model_dump(mode="json"))
                         input_tokens = sample.length.input_tokens or 0
                         if args.min_tokens <= input_tokens <= args.max_tokens:
@@ -248,6 +260,12 @@ def main() -> None:
                             write_jsonl_row(candidates_f, sample.model_dump(mode="json"))
                             counters["kept_32k_900k"] += 1
                             dataset_counter["kept_32k_900k"] += 1
+                            if sample.quality.training_eligible:
+                                counters["training_eligible_kept"] += 1
+                                dataset_counter["training_eligible_kept"] += 1
+                            else:
+                                counters["training_ineligible_kept"] += 1
+                                dataset_counter["training_ineligible_kept"] += 1
                             manifest_key = (dataset_name, subset, split)
                             normalized_path = normalized_candidate_path(
                                 normalized_output_root, dataset_name, subset, split
@@ -276,6 +294,8 @@ def main() -> None:
                                         "normalized_candidates_path": str(normalized_path),
                                         "candidate_type": sample.task.subtype,
                                         "contamination_risk": sample.quality.contamination_risk,
+                                        "training_eligible": sample.quality.training_eligible,
+                                        "training_exclusion_reason": sample.quality.training_exclusion_reason,
                                     },
                                 )
                 except Exception as exc:
@@ -295,6 +315,7 @@ def main() -> None:
         "tokenizer": args.tokenizer,
         "min_tokens": args.min_tokens,
         "max_tokens": args.max_tokens,
+        "heldout_benchmark_aliases": sorted(heldout_aliases),
         "outputs": {
             "candidates": str(candidates_path),
             "samples_with_tokens": str(all_samples_path),

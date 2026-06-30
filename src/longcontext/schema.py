@@ -77,6 +77,8 @@ class Quality(BaseModel):
     quality_score: float | None = None
     evidence_spread: str | None = None
     contamination_risk: Literal["low", "medium", "high"] | None = None
+    training_eligible: bool | None = None
+    training_exclusion_reason: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
