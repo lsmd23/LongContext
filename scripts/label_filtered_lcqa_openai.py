@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -23,6 +24,17 @@ def discover_inputs(filtered_root: Path, pattern: str) -> list[Path]:
     )
 
 
+def has_training_eligible_true(path: Path) -> bool:
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if (row.get("quality") or {}).get("training_eligible") is True:
+                return True
+    return False
+
+
 def output_path_for(input_path: Path, filtered_root: Path, labeled_root: Path) -> Path:
     relative = input_path.relative_to(filtered_root)
     return labeled_root / relative
@@ -43,6 +55,7 @@ def build_single_file_args(args: argparse.Namespace, input_path: Path, output_pa
         limit=args.limit_per_file,
         max_context_chars=args.max_context_chars,
         include_training_ineligible=args.include_training_ineligible,
+        require_training_eligible=args.require_training_eligible,
         dry_run=args.dry_run,
         fail_on_error=args.fail_on_error,
     )
@@ -68,6 +81,11 @@ def main() -> None:
     parser.add_argument("--max-files", type=int)
     parser.add_argument("--max-context-chars", type=int)
     parser.add_argument("--include-training-ineligible", action="store_true")
+    parser.add_argument(
+        "--require-training-eligible",
+        action="store_true",
+        help="Only label files and samples explicitly marked quality.training_eligible=true.",
+    )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--fail-on-error", action="store_true")
     args = parser.parse_args()
@@ -78,6 +96,8 @@ def main() -> None:
         raise SystemExit(f"Filtered root does not exist: {filtered_root}")
 
     inputs = discover_inputs(filtered_root, args.pattern)
+    if args.require_training_eligible:
+        inputs = [path for path in inputs if has_training_eligible_true(path)]
     if args.max_files is not None:
         inputs = inputs[: args.max_files]
     if not inputs:

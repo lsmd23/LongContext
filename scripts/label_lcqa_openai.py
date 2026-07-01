@@ -266,9 +266,22 @@ def iter_labeled_rows(args: argparse.Namespace, config: dict[str, Any]):
     if temperature is None and "temperature" in config:
         temperature = float(config["temperature"])
 
-    stats = {"processed": 0, "success": 0, "failed": 0, "skipped_training_ineligible": 0}
+    stats = {
+        "processed": 0,
+        "success": 0,
+        "failed": 0,
+        "skipped_training_ineligible": 0,
+        "skipped_missing_training_eligible": 0,
+    }
     for row in tqdm(read_jsonl(args.input), desc="label", unit="sample"):
         sample = LCQASample.model_validate(row)
+        if getattr(args, "require_training_eligible", False):
+            if sample.quality.training_eligible is not True:
+                if sample.quality.training_eligible is False:
+                    stats["skipped_training_ineligible"] += 1
+                else:
+                    stats["skipped_missing_training_eligible"] += 1
+                continue
         if sample.quality.training_eligible is False and not args.include_training_ineligible:
             stats["skipped_training_ineligible"] += 1
             continue
@@ -298,7 +311,8 @@ def iter_labeled_rows(args: argparse.Namespace, config: dict[str, Any]):
     print(
         f"labeling complete; processed={stats['processed']}, "
         f"success={stats['success']}, failed={stats['failed']}, "
-        f"skipped_training_ineligible={stats['skipped_training_ineligible']}"
+        f"skipped_training_ineligible={stats['skipped_training_ineligible']}, "
+        f"skipped_missing_training_eligible={stats['skipped_missing_training_eligible']}"
     )
     if args.fail_on_error and stats["failed"]:
         raise SystemExit(f"Teacher labeling failed for {stats['failed']} sample(s).")
@@ -324,6 +338,11 @@ def main() -> None:
         help="Truncate context for smoke tests. Omit for full-context labeling.",
     )
     parser.add_argument("--include-training-ineligible", action="store_true")
+    parser.add_argument(
+        "--require-training-eligible",
+        action="store_true",
+        help="Only label samples explicitly marked quality.training_eligible=true.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Validate plumbing without API calls.")
     parser.add_argument("--fail-on-error", action="store_true", help="Exit non-zero if any API call fails.")
     args = parser.parse_args()
