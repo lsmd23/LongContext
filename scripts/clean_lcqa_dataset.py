@@ -134,8 +134,12 @@ def answer_issues(sample: LCQASample) -> list[str]:
         issues.append("garbled_answer")
     if sample.input.choices:
         labels = {choice.label for choice in sample.input.choices}
+        choice_texts = {compact_text(choice.text) for choice in sample.input.choices}
         answer_label = (sample.output.label or answer).strip()
-        if answer_label and answer_label in labels:
+        answer_norm = compact_text(answer_label)
+        if answer_label and (answer_label in labels or answer_norm in choice_texts):
+            return issues
+        if any(str(ref).strip() in labels or compact_text(str(ref)) in choice_texts for ref in references):
             return issues
         if sample.output.answer_type == "multiple_choice":
             issues.append("multiple_choice_label_mismatch")
@@ -242,17 +246,17 @@ def classify_sample(
     seen_exact_global.add(exact_hash)
     by_source.add(exact_hash)
 
-    ans_issues = answer_issues(sample)
-    reasons.extend(ans_issues)
-    if ans_issues:
-        return "needs_answer_relabel", reasons, hashes
-
     if sample.quality.training_eligible is False:
         reasons.append(sample.quality.training_exclusion_reason or "training_ineligible")
         return "benchmark_or_eval_only", reasons, hashes
     if sample.quality.contamination_risk == "high":
         reasons.append("high_contamination_risk")
         return "benchmark_or_eval_only", reasons, hashes
+
+    ans_issues = answer_issues(sample)
+    reasons.extend(ans_issues)
+    if ans_issues:
+        return "needs_answer_relabel", reasons, hashes
 
     if not sample.source.license:
         reasons.append("license_unknown")
