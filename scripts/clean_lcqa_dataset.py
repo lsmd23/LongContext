@@ -22,6 +22,7 @@ from longcontext.schema import LCQASample  # noqa: E402
 
 CLEANING_STATUSES = (
     "clean_ready",
+    "train_with_contamination_risk",
     "needs_teacher_label",
     "needs_query_generation",
     "needs_answer_relabel",
@@ -33,6 +34,7 @@ QUEUE_FILES = {
     "teacher_current": "teacher_queue_le_256k.jsonl",
     "teacher_long": "teacher_queue_256k_900k.jsonl",
     "benchmark_or_eval_only": "benchmark_or_eval_only.jsonl",
+    "train_with_contamination_risk": "train_with_contamination_risk.jsonl",
     "needs_query_generation": "needs_query_generation.jsonl",
     "drop_or_review": "drop_or_review.jsonl",
     "clean_ready": "clean_ready.jsonl",
@@ -124,7 +126,7 @@ def query_issues(sample: LCQASample) -> list[str]:
 def answer_issues(sample: LCQASample) -> list[str]:
     answer = (sample.output.answer or "").strip()
     references = [item for item in sample.output.reference_answers if str(item).strip()]
-    has_answer = bool(answer or references or sample.output.label)
+    has_answer = has_reference_answer(sample)
     issues = []
     sample.quality.metadata["has_reference_answer"] = has_answer
     if not has_answer:
@@ -144,6 +146,12 @@ def answer_issues(sample: LCQASample) -> list[str]:
         if sample.output.answer_type == "multiple_choice":
             issues.append("multiple_choice_label_mismatch")
     return issues
+
+
+def has_reference_answer(sample: LCQASample) -> bool:
+    answer = (sample.output.answer or "").strip()
+    references = [item for item in sample.output.reference_answers if str(item).strip()]
+    return bool(answer or references or sample.output.label)
 
 
 def source_key(sample: LCQASample) -> str:
@@ -203,6 +211,7 @@ def classify_sample(
     seen_exact_by_source: dict[str, set[str]],
     group_counts: Counter,
     max_per_source_doc_group: int,
+    benchmark_policy: str,
 ) -> tuple[str, list[str], dict[str, str]]:
     reasons: list[str] = []
     context = sample.document.context or ""
@@ -245,12 +254,21 @@ def classify_sample(
 
     seen_exact_global.add(exact_hash)
     by_source.add(exact_hash)
+    sample.quality.metadata["has_reference_answer"] = has_reference_answer(sample)
 
     if sample.quality.training_eligible is False:
         reasons.append(sample.quality.training_exclusion_reason or "training_ineligible")
+        if benchmark_policy == "train_with_risk":
+            if sample.quality.metadata.get("has_reference_answer"):
+                return "train_with_contamination_risk", reasons, hashes
+            return "needs_teacher_label", reasons, hashes
         return "benchmark_or_eval_only", reasons, hashes
     if sample.quality.contamination_risk == "high":
         reasons.append("high_contamination_risk")
+        if benchmark_policy == "train_with_risk":
+            if sample.quality.metadata.get("has_reference_answer"):
+                return "train_with_contamination_risk", reasons, hashes
+            return "needs_teacher_label", reasons, hashes
         return "benchmark_or_eval_only", reasons, hashes
 
     ans_issues = answer_issues(sample)
@@ -269,7 +287,13 @@ def classify_sample(
 
 
 def queue_key_for(sample: LCQASample, status: str) -> str:
-    if status in {"benchmark_or_eval_only", "needs_query_generation", "drop_or_review", "clean_ready"}:
+    if status in {
+        "benchmark_or_eval_only",
+        "train_with_contamination_risk",
+        "needs_query_generation",
+        "drop_or_review",
+        "clean_ready",
+    }:
         return status
     if status == "needs_answer_relabel":
         return "needs_answer_relabel"
@@ -299,6 +323,7 @@ def build_markdown_report(summary: dict[str, Any], source_rows: list[dict[str, A
         f"- Final samples: {summary['final_samples']}",
         f"- Training eligible: {summary['training_eligible']}",
         f"- Training ineligible: {summary['training_ineligible']}",
+        f"- Train with contamination risk: {summary['status_counts'].get('train_with_contamination_risk', 0)}",
         f"- Needs teacher label: {summary['status_counts'].get('needs_teacher_label', 0)}",
         "",
         "## Status Counts",
@@ -347,6 +372,16 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--progress", action="store_true")
     parser.add_argument("--max-per-source-doc-group", type=int, default=20)
+    parser.add_argument(
+        "--benchmark-policy",
+        choices=("exclude", "train_with_risk"),
+        default="exclude",
+        help=(
+            "exclude keeps held-out/benchmark-like sources in benchmark_or_eval_only. "
+            "train_with_risk emits answer-bearing benchmark-like samples to "
+            "train_with_contamination_risk while preserving risk metadata."
+        ),
+    )
     parser.add_argument(
         "--heldout-benchmark",
         action="append",
@@ -439,6 +474,7 @@ def main() -> None:
                         seen_exact_by_source=seen_exact_by_source,
                         group_counts=group_counts,
                         max_per_source_doc_group=args.max_per_source_doc_group,
+                        benchmark_policy=args.benchmark_policy,
                     )
                     set_cleaning_metadata(sample, status=status, reasons=reasons, hashes=hashes)
 
@@ -498,6 +534,7 @@ def main() -> None:
         "training_eligible": training_eligible,
         "training_ineligible": training_ineligible,
         "heldout_benchmark_aliases": sorted(heldout_aliases),
+        "benchmark_policy": args.benchmark_policy,
         "status_counts": {status: status_counts.get(status, 0) for status in CLEANING_STATUSES},
         "bucket_counts": {bucket: bucket_counts.get(bucket, 0) for bucket in BUCKET_ORDER},
         "main_long_context_total": sum(
